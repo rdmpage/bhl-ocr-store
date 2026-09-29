@@ -183,15 +183,15 @@ for ($i = 0; $i < count($args); $i++)
 	switch ($args[$i])
 	{
 		case '--sample':
-			$sql = 'SELECT * FROM item WHERE status IS NULL ORDER BY random() LIMIT ' . (int)$args[++$i];
+			$sql = 'SELECT item_id, barcode FROM item WHERE status IS NULL ORDER BY random() LIMIT ' . (int)$args[++$i];
 			break;
 
 		case '--all':
-			$sql = 'SELECT * FROM item WHERE status IS NULL ORDER BY item_id';
+			$sql = 'SELECT item_id, barcode FROM item WHERE status IS NULL ORDER BY item_id';
 			break;
 
 		case '--retry':
-			$sql = 'SELECT * FROM item WHERE status = "error" ORDER BY item_id';
+			$sql = 'SELECT item_id, barcode FROM item WHERE status = "error" ORDER BY item_id';
 			break;
 
 		case '--limit':
@@ -203,12 +203,12 @@ for ($i = 0; $i < count($args); $i++)
 			break;
 
 		case '--barcode':
-			$sql = 'SELECT * FROM item WHERE barcode = ?';
+			$sql = 'SELECT item_id, barcode FROM item WHERE barcode = ?';
 			$params[] = $args[++$i];
 			break;
 
 		default:
-			$sql = 'SELECT * FROM item WHERE item_id IN ('
+			$sql = 'SELECT item_id, barcode FROM item WHERE item_id IN ('
 				. implode(',', array_map('intval', array_slice($args, $i))) . ')';
 			$i = count($args);
 			break;
@@ -225,11 +225,21 @@ if ($limit && strpos($sql, 'LIMIT') === false)
 	$sql .= ' LIMIT ' . $limit;
 }
 
+// Keep just the ids and barcodes in two plain arrays: a row array per item for all of
+// BHL is more than PHP's default memory limit
+$ids = [];
+$barcodes = [];
 $stmt = db()->prepare($sql);
 $stmt->execute($params);
-$items = $stmt->fetchAll();
+while ($row = $stmt->fetch(PDO::FETCH_NUM))
+{
+	$ids[] = (int)$row[0];
+	$barcodes[] = (string)$row[1];
+}
+$stmt = null;
+$total = count($ids);
 
-if (count($items) == 0)
+if ($total == 0)
 {
 	fwrite(STDERR, "No matching items (have you run items.php?)\n");
 }
@@ -247,11 +257,11 @@ for ($worker = 0; $worker < $workers; $worker++)
 	}
 
 	db(true);
-	for ($n = $worker; $n < count($items); $n += $workers)
+	for ($n = $worker; $n < $total; $n += $workers)
 	{
-		$item = $items[$n];
+		$item = ['item_id' => $ids[$n], 'barcode' => $barcodes[$n]];
 		list($status, $message) = fetch_item($item);
-		echo '[' . ($n + 1) . '/' . count($items) . "] {$item['item_id']} {$item['barcode']} $status" . ($message ? " ($message)" : '') . "\n";
+		echo '[' . ($n + 1) . "/$total] {$item['item_id']} {$item['barcode']} $status" . ($message ? " ($message)" : '') . "\n";
 	}
 	if ($workers > 1)
 	{
