@@ -27,9 +27,15 @@ function store_root()
 }
 
 //----------------------------------------------------------------------------------------
-function db()
+function db($reset = false)
 {
 	static $db = null;
+
+	// A forked worker must open its own connection rather than share its parent's
+	if ($reset)
+	{
+		$db = null;
+	}
 
 	if (!$db)
 	{
@@ -75,7 +81,7 @@ function db()
 //----------------------------------------------------------------------------------------
 // GET a URL, retrying on network errors, 429 and 5xx. If $filename is given the body is
 // written there, otherwise it is returned. Returns false on a 404 or when retries run out.
-function http_get($url, $filename = null, $tries = 5)
+function http_get($url, $filename = null, $tries = 3)
 {
 	for ($attempt = 1; $attempt <= $tries; $attempt++)
 	{
@@ -115,7 +121,10 @@ function http_get($url, $filename = null, $tries = 5)
 		}
 
 		fwrite(STDERR, "  $url: " . ($error ? $error : "HTTP $code") . ", attempt $attempt\n");
-		sleep(min(60, 5 * $attempt * $attempt));
+		if ($attempt < $tries)
+		{
+			sleep(5 * $attempt);
+		}
 	}
 	return false;
 }
