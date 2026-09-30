@@ -1,6 +1,6 @@
 # BHL OCR store
 
-A local copy of the OCR, with word coordinates, for items in the Biodiversity Heritage Library, so that annotations can be mapped onto pages without fetching anything at the time (see [ocr-format](../ocr-format)).
+A local copy of the OCR, with word coordinates, for items in the Biodiversity Heritage Library, so that annotations can be mapped onto pages without fetching anything at the time (see [ocr-format](https://github.com/rdmpage/ocr-format)).
 
 BHL's own OCR (in its [open data on AWS](https://bhl-open-data.s3.amazonaws.com/README.html)) is plain text, one file per page, with no coordinates. Most BHL items were scanned by the Internet Archive, which has OCR with word coordinates, so we get that from IA. For each item we store:
 
